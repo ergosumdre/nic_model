@@ -1,0 +1,137 @@
+library(LDAvis)
+library(shiny)
+library(mallet)
+library(dplyr)
+library("data.table")
+library("dplyr")
+library("stringr")
+library(bigrquery)
+library(tidyverse)
+library(tidytext)
+library(stm)
+library(furrr)
+library(waiter)
+
+
+
+
+ui <- shinyUI(
+    fluidPage(
+        use_waitress(),
+        sliderInput("nTerms1", "Number of terms to display", min = 20, max = 40, value = 30),
+        visOutput('myChart1'),
+        sliderInput("nTerms2", "Number of terms to display", min = 20, max = 40, value = 30),
+        visOutput('myChart2')
+    )
+)
+
+server <- shinyServer(function(input, output, session) {
+    # call the waitress
+    waitress <- Waitress$
+        new(theme = "overlay-percent")$
+        start() # start
+
+    for(i in 1:10){
+        waitress$inc(10) # increase by 10%
+        Sys.sleep(.3)
+    }
+    text <- fread("/Users/dre/Downloads/new_nic/NJDeptofHealth_tweets_2020_12_07.csv", integer64 = "character")
+    text <- text %>% filter(is_retweet != TRUE)
+    text <- text %>% select(text)
+    text <- text %>% filter(lapply(text, str_count) > 5)
+    clean_text <- text %>%
+        mutate(text = coalesce(text),
+               text = str_replace_all(text, "&#x27;|&quot;|&#x2F;", "'"), ## weird encoding
+               text = str_replace_all(text, "<a(.*?)>", " "),             ## links
+               text = str_replace_all(text, "&gt;|&lt;|&amp;", " "),      ## html yuck
+               text = str_replace_all(text, "&#[:digit:]+;", " "),        ## html yuck
+               text = str_remove_all(text, "<[^>]*>"),                    ## mmmmm, more html yuck
+               text = gsub("@\\w+", "", text),
+               text = gsub("https?://.+", "", text),
+               text =  gsub("\\d+\\w*\\d*", "", text),
+               text = gsub("#\\w+", "", text),
+               text = gsub("[^\x01-\x7F]", "", text),
+               text = gsub("[[:punct:]]", " ", text),
+               text = gsub("https://t.co/", " ", text),
+               text = gsub("(s?)(f|ht)tp(s?)://\\S+\\b", "", text),
+               text = gsub("[A-Za-z]{1,5}[.][A-Za-z]{2,3}/[A-Za-z0-9]+\\b", "", text),
+               # Remove spaces and newlines
+               text = gsub("\n", " ", text),
+               text = gsub("^\\s+", "", text),
+               text = gsub("\\s+$", "", text),
+               text = gsub("[ |\t]+", " ", text),
+               postID = row_number())
+
+
+    ntext=1:nrow(clean_text) #jtext$sid
+    jtext <- clean_text
+    #train using mallet
+    #mallet.import: This function takes an array of document IDs and text files (as character strings) and converts them into a Mallet instance list.
+    mall.instance <- mallet.import(
+        as.character(ntext),
+        jtext$text,
+        "/Users/dre/Downloads/mallet-2.0.8/stoplists/en.txt",
+        FALSE,
+        token.regexp="[\\p{L}]+")
+
+    #set number of topic
+    topic.model2=MalletLDA(num.topics=40)
+    topic.model2$loadDocuments(mall.instance)
+    vocab2=topic.model2$getVocabulary()
+    word.freqs2=mallet.word.freqs(topic.model2)
+    topic.model2$setAlphaOptimization(40,80)
+    topic.model2$train(400)
+
+    topic.words.m<-mallet.topic.words(topic.model2,smoothed=TRUE,normalized=TRUE)
+
+    dim(topic.words.m)
+
+    vocabulary2 <- topic.model2$getVocabulary()
+    colnames(topic.words.m) <- vocabulary2
+
+    doc.topics.m <- mallet.doc.topics(topic.model2, smoothed=T,
+                                      normalized=T)
+
+
+    doc.topics.df <- as.data.frame(doc.topics.m)
+    doc.topics.df <- cbind(ntext, doc.topics.df)
+
+    doc.topic.means.df <- aggregate(doc.topics.df[,2:ncol(doc.topics.df)],
+                                    list(doc.topics.df[,1]),mean)
+
+
+
+    phi <- mallet.topic.words(topic.model2, smoothed = TRUE, normalized = TRUE)
+    phi.count <- t(mallet.topic.words(topic.model2, smoothed = TRUE, normalized = FALSE))
+
+    topic.words <- mallet.topic.words(topic.model2, smoothed=TRUE, normalized=TRUE)
+    topic.counts <- rowSums(topic.words.m)
+
+    topic.proportions <- topic.counts/sum(topic.counts)
+
+    vocab2 <- topic.model2$getVocabulary()
+
+    doc.tokens <- data.frame(id=c(1:nrow(doc.topics.m)), tokens=0)
+    for(i in vocab2){
+        # Find word if word in text
+        matched <- grepl(i, jtext$text)
+        doc.tokens[matched,2] =doc.tokens[matched,2] +  1
+    }
+
+
+    output$myChart1 <- renderVis({
+        # this process takes long time. just use a small sample first. Commenting this for now because I've ran this to create a json file.
+        createJSON(phi = phi,
+                           theta = doc.topics.m,
+                           doc.length = doc.tokens$tokens,
+                           vocab = vocab2,
+                           term.frequency = apply(phi.count, 1, sum))
+
+    })
+    waitress$close()
+
+
+
+})
+
+shinyApp(ui = ui, server = server)
