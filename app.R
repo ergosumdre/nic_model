@@ -61,6 +61,8 @@ server <- shinyServer(function(input, output, session) {
                text = gsub("[ |\t]+", " ", text),
                postID = row_number())
 
+# The remainding code is from the following Author: Thomas Keller. 
+    #This is the work used for the "Open Data Visualizations and Analytics as Tools for Policy-Making" published by Government Information Quarterly
 
     ntext=1:nrow(clean_text) #jtext$sid
     jtext <- clean_text
