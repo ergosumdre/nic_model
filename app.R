@@ -34,7 +34,7 @@ server <- shinyServer(function(input, output, session) {
         waitress$inc(10) # increase by 10%
         Sys.sleep(.3)
     }
-    text <- fread("NJDeptofHealth_tweets_2020_12_07.csv", integer64 = "character")
+    text <- readr::read_csv("/srv/shiny-server/serVis/NJDeptofHealth_tweets_2020_12_07.csv")
     text <- text %>% filter(is_retweet != TRUE)
     text <- text %>% select(text)
     text <- text %>% filter(lapply(text, str_count) > 5)
@@ -60,7 +60,7 @@ server <- shinyServer(function(input, output, session) {
                text = gsub("[ |\t]+", " ", text),
                postID = row_number())
 
-# The remainding code is from the following Author: Thomas Keller. 
+    # The reminding code is from the following Author: Thomas Keller.
     #This is the work used for the "Open Data Visualizations and Analytics as Tools for Policy-Making" published by Government Information Quarterly
 
     ntext=1:nrow(clean_text) #jtext$sid
@@ -70,7 +70,7 @@ server <- shinyServer(function(input, output, session) {
     mall.instance <- mallet.import(
         as.character(ntext),
         jtext$text,
-        "en.txt",
+        "/srv/shiny-server/serVis/en.txt",
         FALSE,
         token.regexp="[\\p{L}]+")
 
@@ -122,10 +122,10 @@ server <- shinyServer(function(input, output, session) {
     output$myChart1 <- renderVis({
         # this process takes long time. just use a small sample first. Commenting this for now because I've ran this to create a json file.
         createJSON(phi = phi,
-                           theta = doc.topics.m,
-                           doc.length = doc.tokens$tokens,
-                           vocab = vocab2,
-                           term.frequency = apply(phi.count, 1, sum))
+                   theta = doc.topics.m,
+                   doc.length = doc.tokens$tokens,
+                   vocab = vocab2,
+                   term.frequency = apply(phi.count, 1, sum))
 
     })
     waitress$close()
