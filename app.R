@@ -35,27 +35,26 @@ server <- shinyServer(function(input, output, session) {
         waitress$inc(10) # increase by 10%
         Sys.sleep(.3)
     }
-    text <- fread("/Users/dre/Downloads/new_nic/NJDeptofHealth_tweets_2020_12_07.csv", integer64 = "character")
+    text <- fread("NJDeptofHealth_tweets_2020_12_07.csv", integer64 = "character")
     text <- text %>% filter(is_retweet != TRUE)
     text <- text %>% select(text)
     text <- text %>% filter(lapply(text, str_count) > 5)
     clean_text <- text %>%
         mutate(text = coalesce(text),
-               text = str_replace_all(text, "&#x27;|&quot;|&#x2F;", "'"), ## weird encoding
-               text = str_replace_all(text, "<a(.*?)>", " "),             ## links
-               text = str_replace_all(text, "&gt;|&lt;|&amp;", " "),      ## html yuck
-               text = str_replace_all(text, "&#[:digit:]+;", " "),        ## html yuck
-               text = str_remove_all(text, "<[^>]*>"),                    ## mmmmm, more html yuck
+               text = gsub("&#x27;|&quot;|&#x2F;", "'", text), ## weird encoding
+               text = gsub("<a(.*?)>", " ", text),             ## links
+               text = gsub("&gt;|&lt;|&amp;", " ", text),      ## html yuck
+               text = gsub("&#[:digit:]+;", " ", text),        ## html yuck
+               text = gsub("<[^>]*>", "", text),                    ## mmmmm, more html yuck
                text = gsub("@\\w+", "", text),
                text = gsub("https?://.+", "", text),
-               text =  gsub("\\d+\\w*\\d*", "", text),
+               text = gsub("\\d+\\w*\\d*", "", text),
                text = gsub("#\\w+", "", text),
                text = gsub("[^\x01-\x7F]", "", text),
                text = gsub("[[:punct:]]", " ", text),
                text = gsub("https://t.co/", " ", text),
                text = gsub("(s?)(f|ht)tp(s?)://\\S+\\b", "", text),
                text = gsub("[A-Za-z]{1,5}[.][A-Za-z]{2,3}/[A-Za-z0-9]+\\b", "", text),
-               # Remove spaces and newlines
                text = gsub("\n", " ", text),
                text = gsub("^\\s+", "", text),
                text = gsub("\\s+$", "", text),
@@ -70,7 +69,7 @@ server <- shinyServer(function(input, output, session) {
     mall.instance <- mallet.import(
         as.character(ntext),
         jtext$text,
-        "/Users/dre/Downloads/mallet-2.0.8/stoplists/en.txt",
+        "en.txt",
         FALSE,
         token.regexp="[\\p{L}]+")
 
