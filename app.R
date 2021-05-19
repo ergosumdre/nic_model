@@ -40,7 +40,7 @@ server <- shinyServer(function(input, output, session) {
     waitress$inc(10) # increase by 10%
     Sys.sleep(.3)
   }
-  text <- readr::read_csv("/srv/shiny-server/dr_nic/nic_model/NJDeptofHealth_tweets_2020_12_07.csv")
+  text <- readr::read_csv("/srv/shiny-server/nic_DePaula/topic_modeling/NJDeptofHealth_tweets_2020_12_07.csv")
   text <- text %>% filter(is_retweet != TRUE)
   text <- text %>% select(text)
   text <- text %>% filter(lapply(text, str_count) > 5)
@@ -76,7 +76,7 @@ server <- shinyServer(function(input, output, session) {
   mall.instance <- mallet.import(
     as.character(ntext),
     jtext$text,
-    "/srv/shiny-server/dr_nic/nic_model/en.txt",
+    "/srv/shiny-server/nic_DePaula/topic_modeling/en.txt",
     FALSE,
     token.regexp="[\\p{L}]+")
   
